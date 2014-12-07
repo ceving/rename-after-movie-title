@@ -3,17 +3,37 @@ package main
 import "fmt"
 import "golang.org/x/net/html"
 import "net/http"
+import "unicode"
 
 type action func(node *html.Node)
 type predicate func(node *html.Node) (bool)
 
-func print_node(node *html.Node) {
-	fmt.Println(node)
-}
-
-func is_element(name string) (predicate) {
+func element(name string) (predicate) {
 	return func (node *html.Node) (bool) {
 		return node.Type == html.ElementNode && node.Data == name
+	}
+}
+
+func attribute(name, value string) (predicate) {
+	return func (node *html.Node) (bool) {
+		for _,attr := range node.Attr {
+			if attr.Key == name && attr.Val == value {
+				return true
+			}
+		}
+		return false
+	}
+}
+
+func text() (predicate) {
+	return func (node *html.Node) (bool) {
+		return node.Type == html.TextNode
+	}
+}
+
+func and(a, b predicate) (predicate) {
+	return func (node *html.Node) (bool) {
+		return a(node) && b(node)
 	}
 }
 
@@ -36,6 +56,31 @@ func walker(continuation action) (action) {
 	return walk
 }
 
+func normalizer(dst *string) (func(string)) {
+	beginning := true
+	whitespace := true
+	return func (src string) {
+		for _, r := range src {
+			if unicode.IsSpace(r) {
+				if !whitespace {
+					whitespace = true
+				}
+				continue
+			} else {
+				if whitespace {
+					whitespace = false
+					if beginning {
+						beginning = false
+					} else {
+						*dst += " ";
+					}
+				}
+				*dst += string(r);
+			}
+		}
+	}
+}
+
 func main() {
 
 	// Get HTML
@@ -51,9 +96,25 @@ func main() {
 		panic(err)
 	}
 
+	// Collect title text
+	title := ""
+	append_title := func() (func(*html.Node)) {
+		normalize := normalizer(&title)
+		return func(node *html.Node) {
+			normalize(node.Data)
+		}
+	}()
+
 	// Find title
-	find := walker(matcher(is_element("h1"), print_node))
+	find := walker(matcher(and(element("h1"), attribute("class", "header")),
+		walker(matcher(text(), append_title))))
 	find(doc);
 
-//	fmt.Println(doc)
+	// Report title
+	fmt.Println(title)
+
 }
+
+// Local Variables:
+// compile-command: "go run rename-after-movie-title.go"
+// End:
