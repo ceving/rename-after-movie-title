@@ -7,6 +7,10 @@
   [[IMDB]] links.  If it finds a link, the program fetches the web page and
   searchs for a meta tag containing the movie title.
 
+** License
+   The program is licensed under the [[license][GNU General Public License]].
+
 #+LINK: nfo https://en.wikipedia.org/wiki/.nfo
 #+LINK: kodi http://kodi.wiki/view/Naming_video_files/Movies
 #+LINK: imdb http://www.imdb.com/
+#+LINK: license https://raw.githubusercontent.com/ceving/rename-after-movie-title/master/LICENSE

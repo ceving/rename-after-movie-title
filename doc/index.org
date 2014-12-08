@@ -1,3 +1,0 @@
-* Test
-  Image test
-  [[file:fluidicon.png]]
