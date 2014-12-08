@@ -2,21 +2,32 @@ package main
 
 import "fmt"
 import "golang.org/x/net/html"
+import "io/ioutil"
 import "net/http"
-import "unicode"
+import "os"
+import "path/filepath"
+import "regexp"
 
-type action func(node *html.Node)
-type predicate func(node *html.Node) (bool)
+var imdb_title_url string
+var imdb_title_rx *regexp.Regexp
 
-func element(name string) (predicate) {
-	return func (node *html.Node) (bool) {
+func init() {
+	imdb_title_url = "http://www.imdb.com/title/"
+	imdb_title_rx = regexp.MustCompile(imdb_title_url + "(tt[0-9]+)/")
+}
+
+type action func(node *html.Node) bool
+type predicate func(node *html.Node) bool
+
+func element(name string) predicate {
+	return func(node *html.Node) bool {
 		return node.Type == html.ElementNode && node.Data == name
 	}
 }
 
-func attribute(name, value string) (predicate) {
-	return func (node *html.Node) (bool) {
-		for _,attr := range node.Attr {
+func attribute(name, value string) predicate {
+	return func(node *html.Node) bool {
+		for _, attr := range node.Attr {
 			if attr.Key == name && attr.Val == value {
 				return true
 			}
@@ -25,94 +36,117 @@ func attribute(name, value string) (predicate) {
 	}
 }
 
-func text() (predicate) {
-	return func (node *html.Node) (bool) {
+func text() predicate {
+	return func(node *html.Node) bool {
 		return node.Type == html.TextNode
 	}
 }
 
-func and(a, b predicate) (predicate) {
-	return func (node *html.Node) (bool) {
+func and(a, b predicate) predicate {
+	return func(node *html.Node) bool {
 		return a(node) && b(node)
 	}
 }
 
-func matcher(matches predicate, continuation action) (action) {
-	return func (node *html.Node) {
-		if matches(node) {
-			continuation(node);
+func not(a predicate) predicate {
+	return func(node *html.Node) bool {
+		if a(node) {
+			return false
+		} else {
+			return true
 		}
 	}
 }
 
-func walker(continuation action) (action) {
+func matcher(matches predicate, continuation action) action {
+	return func(node *html.Node) bool {
+		if matches(node) {
+			return continuation(node)
+		}
+		return true
+	}
+}
+
+func walker(continuation action) action {
 	var walk action
-	walk = func (node *html.Node) {
-		continuation(node)
-		for child := node.FirstChild; child != nil; child = child.NextSibling {
-			walk(child)
+	walk = func(node *html.Node) bool {
+		if continuation(node) {
+			cont := true
+			for child := node.FirstChild; child != nil && cont; child = child.NextSibling {
+				cont = walk(child)
+			}
+			return true
+		} else {
+			return false
 		}
 	}
 	return walk
 }
 
-func normalizer(dst *string) (func(string)) {
-	beginning := true
-	whitespace := true
-	return func (src string) {
-		for _, r := range src {
-			if unicode.IsSpace(r) {
-				if !whitespace {
-					whitespace = true
-				}
-				continue
-			} else {
-				if whitespace {
-					whitespace = false
-					if beginning {
-						beginning = false
-					} else {
-						*dst += " ";
-					}
-				}
-				*dst += string(r);
-			}
+func attrval(node *html.Node, name string) string {
+	for _, attr := range node.Attr {
+		if attr.Key == name {
+			return attr.Val
 		}
 	}
+	return ""
 }
 
+
+// Main.
 func main() {
 
-	// Get HTML
-	resp, err := http.Get("http://www.imdb.com/title/tt0093191/")
-	if err != nil {
-		panic(err)
-	}
-	defer resp.Body.Close()
+	for _, dir := range os.Args[1:] {
+		// Search NFO files.
+		files, _ := filepath.Glob(filepath.Join(dir, "*.nfo"))
+		for _, filename := range files {
+			// Read a IMDB movie ID from the file.
+			file, err := ioutil.ReadFile(filename)
+			if err != nil {
+				panic(err)
+			}
+			match := imdb_title_rx.FindSubmatch(file)
+			if match != nil {
+				id := string(match[1])
+				url := imdb_title_url + id + "/"
 
-	// Parse HTML
-	doc, err := html.Parse(resp.Body)
-	if err != nil {
-		panic(err)
-	}
+				// Get HTML
+				resp, err := http.Get(url)
+				if err != nil {
+					panic(err)
+				}
+				defer resp.Body.Close()
 
-	// Collect title text
-	title := ""
-	append_title := func() (func(*html.Node)) {
-		normalize := normalizer(&title)
-		return func(node *html.Node) {
-			normalize(node.Data)
+				// Parse HTML
+				doc, err := html.Parse(resp.Body)
+				if err != nil {
+					panic(err)
+				}
+
+				// Find title
+				var title string
+				find := walker(
+					matcher(
+						and(element("meta"), attribute("property", "og:title")),
+						func (node *html.Node) bool {
+							title = attrval(node, "content")
+							return false
+						}))
+				find(doc)
+
+				if title != "" {
+					fmt.Println(filepath.Dir(dir))
+					fmt.Println("  " + filepath.Base(dir) + " -> " + title)
+					err := os.Rename(dir, filepath.Join(filepath.Dir(dir), title))
+					if err != nil {
+						panic(err)
+					}
+					goto next;
+				}
+			}
 		}
-	}()
-
-	// Find title
-	find := walker(matcher(and(element("h1"), attribute("class", "header")),
-		walker(matcher(text(), append_title))))
-	find(doc);
-
-	// Report title
-	fmt.Println(title)
-
+	next:
+	}
 }
 
 // Local Variables:
