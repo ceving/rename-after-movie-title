@@ -3,8 +3,8 @@
   with the Kodi (XBMC) [[kodi][naming standard for movies]].
 
   In order to get the right title the program tries to find a [[NFO]] file
-  in the directory.  In each NFO file found the program searchs for
-  [[IMDB]] links.  If it finds a link the program fetches the web page and
+  in the directory.  In each NFO file found, the program searches for
+  [[IMDB]] links.  If it finds a link, the program fetches the web page and
   searchs for a meta tag containing the movie title.
 
 #+LINK: nfo https://en.wikipedia.org/wiki/.nfo
