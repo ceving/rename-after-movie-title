@@ -213,14 +213,30 @@ func main() {
 		}
 	}
 
+	// Language codes are documented here:
+	// http://msdn.microsoft.com/en-us/library/dd318693%28v=vs.85%29.aspx
+	var LANG_GERMAN uint16 = 0x7
+
+	// Get language and set the headline.
+	var kernel32 = syscall.NewLazyDLL("kernel32.dll")
+	var GetUserDefaultUILanguage = kernel32.NewProc("GetUserDefaultUILanguage")
+	langid, _, _ := GetUserDefaultUILanguage.Call()
+	lang := uint16(langid) & 0xF
+	var headline string
+	switch {
+	case lang == LANG_GERMAN:
+		headline = "Die folgenden Verzeichnisse umbenennen?"
+	case true:
+		headline = "Rename the following directories?"
+	}
+
 	// Ask if the directories found should be renamed.
-	var mod = syscall.NewLazyDLL("user32.dll")
-	var proc = mod.NewProc("MessageBoxW");
+	var user32 = syscall.NewLazyDLL("user32.dll")
+	var MessageBoxW = user32.NewProc("MessageBoxW")
 	var MB_ICONQUESTION = 0x00000020
 	var MB_YESNO = 0x00000004
 	var IDYES uint = 6
-	var headline string = "Rename the following directories?"
-	ret, _, _ := proc.Call(0,
+	ret, _, _ := MessageBoxW.Call(0,
 		uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(question))),
 		uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(headline))),
 		uintptr(MB_ICONQUESTION | MB_YESNO));
