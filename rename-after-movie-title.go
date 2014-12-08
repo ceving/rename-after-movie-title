@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"syscall"
+	"unsafe"
 )
 
 var imdb_title_url string
@@ -96,9 +98,15 @@ func attrval(node *html.Node, name string) string {
 	return ""
 }
 
+type Rename struct {
+	old, new string
+}
+
 func main() {
 	var genreg bool
-	flag.BoolVar(&genreg, "r", false, "Generate registry file.")
+	flag.BoolVar(&genreg, "g", false, "Generate registry file.")
+	var recurse bool
+	flag.BoolVar(&recurse, "r", true, "Scan directories recursively.")
 	flag.Parse()
 	if genreg {
 		exe := os.Args[0]
@@ -108,23 +116,32 @@ func main() {
 				filepath.Base(exe),
 				filepath.Ext(exe)) + ".reg")
 		fmt.Println(reg)
+		recopt := ""
+		if !recurse {
+			recopt = " -r=false"
+		}
 		data := `Windows Registry Editor Version 5.00
 
 [HKEY_CLASSES_ROOT\Directory\shell\rename-after-movie-title]
 @="Rename after movie title"
 
 [HKEY_CLASSES_ROOT\Directory\shell\rename-after-movie-title\command]
-@="\"` + strings.Replace(exe, `\`, `\\`, -1) + `\" \"%1\""
+@="\"` + strings.Replace(exe, `\`, `\\`, -1) + recopt + `\" \"%1\""
 
 `
 		ioutil.WriteFile(reg, []byte(data), 0644)
 		return
 	}
-	for _, dir := range os.Args[1:] {
+	var question string = ""
+	var todo = []Rename{}
+
+	// Search directories which could be renamed.
+	search := func(path string) {
 		// Generate absolute path.
-		dir, err := filepath.Abs(dir)
+		dir, err := filepath.Abs(path)
 		if err != nil {
-			panic(err)
+			fmt.Println(err)
+			return
 		}
 		// Search NFO files.
 		files, _ := filepath.Glob(filepath.Join(dir, "*.nfo"))
@@ -132,7 +149,8 @@ func main() {
 			// Read a IMDB movie ID from the file.
 			file, err := ioutil.ReadFile(filename)
 			if err != nil {
-				panic(err)
+				fmt.Println(err)
+				return
 			}
 			match := imdb_title_rx.FindSubmatch(file)
 			if match != nil {
@@ -142,14 +160,16 @@ func main() {
 				// Get HTML.
 				resp, err := http.Get(url)
 				if err != nil {
-					panic(err)
+					fmt.Println(err)
+					return
 				}
 				defer resp.Body.Close()
 
 				// Parse HTML.
 				doc, err := html.Parse(resp.Body)
 				if err != nil {
-					panic(err)
+					fmt.Println(err)
+					return
 				}
 
 				// Find title.
@@ -164,20 +184,59 @@ func main() {
 				find(doc)
 				if title != "" {
 					// Rename directory.
-					fmt.Println(filepath.Dir(dir))
-					fmt.Println("  " + filepath.Base(dir) + " -> " + title)
-					err := os.Rename(dir, filepath.Join(filepath.Dir(dir), title))
-					if err != nil {
-						panic(err)
-					}
-					goto next
+					question += filepath.Base(dir) + " → " + title + "\n"
+
+					// Store in the todo list.
+					ren := Rename{dir, filepath.Join(filepath.Dir(dir), title)}
+					fmt.Printf("Adding: %#v\n", ren)
+					todo = append(todo, ren)
+
+					// We are done.
+					return
 				}
 			}
 		}
-	next:
+	}
+
+	// Process directory
+	for _, dir := range os.Args[1:] {
+		if recurse {
+			filepath.Walk(dir,
+				func(path string, info os.FileInfo, err error) error {
+					if info.IsDir() {
+						search(path)
+					}
+					return nil
+				})
+		} else {
+			search(dir)
+		}
+	}
+
+	// Ask if the directories found should be renamed.
+	var mod = syscall.NewLazyDLL("user32.dll")
+	var proc = mod.NewProc("MessageBoxW");
+	var MB_ICONQUESTION = 0x00000020
+	var MB_YESNO = 0x00000004
+	var IDYES uint = 6
+	var headline string = "Rename the following directories?"
+	ret, _, _ := proc.Call(0,
+		uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(question))),
+		uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(headline))),
+		uintptr(MB_ICONQUESTION | MB_YESNO));
+	if uint(ret) == IDYES {
+		// Rename them
+		for _, ren := range todo {
+			fmt.Printf("Renaming: %s -> %s\n", ren.old, ren.new);
+			err := os.Rename(ren.old, ren.new)
+			if err != nil {
+				fmt.Println(err)
+			}
+		}
 	}
 }
 
 // Local Variables:
-// compile-command: "go build rename-after-movie-title.go"
+// compile-command: "go build -ldflags -H=windowsgui \
+//   rename-after-movie-title.go"
 // End:

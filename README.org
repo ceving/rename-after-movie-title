@@ -9,9 +9,9 @@
 
 ** Usage
    Put the executable anywhere on your system and run it with the
-   option '-r'.
+   option '-g'.
 
-   : C:\> rename-after-movie-title -r
+   : C:\> rename-after-movie-title -g
 
    This will create a registry file in the directory, where the
    executable has been stored.  Import the registry file.
@@ -20,6 +20,9 @@
    a new entry called "Rename after movie title".
 
    [[screenshot.png]]
+
+   The default is to search the directories recursively.  If you do
+   not want this, you have to add the option -r=false.
 
 ** License
    The program is licensed under the [[license][GNU General Public License]].
