@@ -92,10 +92,7 @@ func attrval(node *html.Node, name string) string {
 	return ""
 }
 
-
-// Main.
 func main() {
-
 	for _, dir := range os.Args[1:] {
 		// Generate absolute path.
 		dir, err := filepath.Abs(dir)
@@ -115,38 +112,38 @@ func main() {
 				id := string(match[1])
 				url := imdb_title_url + id + "/"
 
-				// Get HTML
+				// Get HTML.
 				resp, err := http.Get(url)
 				if err != nil {
 					panic(err)
 				}
 				defer resp.Body.Close()
 
-				// Parse HTML
+				// Parse HTML.
 				doc, err := html.Parse(resp.Body)
 				if err != nil {
 					panic(err)
 				}
 
-				// Find title
+				// Find title.
 				var title string
 				find := walker(
 					matcher(
 						and(element("meta"), attribute("property", "og:title")),
-						func (node *html.Node) bool {
+						func(node *html.Node) bool {
 							title = attrval(node, "content")
 							return false
 						}))
 				find(doc)
-
 				if title != "" {
+					// Rename directory.
 					fmt.Println(filepath.Dir(dir))
 					fmt.Println("  " + filepath.Base(dir) + " -> " + title)
 					err := os.Rename(dir, filepath.Join(filepath.Dir(dir), title))
 					if err != nil {
 						panic(err)
 					}
-					goto next;
+					goto next
 				}
 			}
 		}
@@ -155,5 +152,5 @@ func main() {
 }
 
 // Local Variables:
-// compile-command: "go run rename-after-movie-title.go"
+// compile-command: "go build rename-after-movie-title.go"
 // End:
