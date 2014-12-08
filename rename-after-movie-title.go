@@ -97,6 +97,11 @@ func attrval(node *html.Node, name string) string {
 func main() {
 
 	for _, dir := range os.Args[1:] {
+		// Generate absolute path.
+		dir, err := filepath.Abs(dir)
+		if err != nil {
+			panic(err)
+		}
 		// Search NFO files.
 		files, _ := filepath.Glob(filepath.Join(dir, "*.nfo"))
 		for _, filename := range files {
