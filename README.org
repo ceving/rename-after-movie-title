@@ -7,6 +7,20 @@
   [[IMDB]] links.  If it finds a link, the program fetches the web page and
   searchs for a meta tag containing the movie title.
 
+** Usage
+   Put the executable anywhere on your system and run it with the
+   option '-r'.
+
+   : C:\> rename-after-movie-title -r
+
+   This will create a registry file in the directory, where the
+   executable has been stored.  Import the registry file.
+
+   After that right-click a directory.  The context menu will contain
+   a new entry called "Rename after movie title".
+
+   [[screenshot.png]]
+
 ** License
    The program is licensed under the [[license][GNU General Public License]].
 

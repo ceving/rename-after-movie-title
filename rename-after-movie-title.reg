@@ -1,0 +1,8 @@
+Windows Registry Editor Version 5.00
+
+[HKEY_CLASSES_ROOT\Directory\shell\rename-after-movie-title]
+@="Rename after movie title"
+
+[HKEY_CLASSES_ROOT\Directory\shell\rename-after-movie-title\command]
+@="\"c:\\Users\\ziemann.sascha\\rename-after-movie-title\\rename-after-movie-title.exe\" \"%1\""
+

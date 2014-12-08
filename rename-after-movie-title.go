@@ -1,12 +1,16 @@
 package main
 
-import "fmt"
-import "golang.org/x/net/html"
-import "io/ioutil"
-import "net/http"
-import "os"
-import "path/filepath"
-import "regexp"
+import (
+	"flag"
+	"fmt"
+	"golang.org/x/net/html"
+	"io/ioutil"
+	"net/http"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
+)
 
 var imdb_title_url string
 var imdb_title_rx *regexp.Regexp
@@ -93,6 +97,29 @@ func attrval(node *html.Node, name string) string {
 }
 
 func main() {
+	var genreg bool
+	flag.BoolVar(&genreg, "r", false, "Generate registry file.")
+	flag.Parse()
+	if genreg {
+		exe := os.Args[0]
+		reg := filepath.Join(
+			filepath.Dir(exe),
+			strings.TrimSuffix(
+				filepath.Base(exe),
+				filepath.Ext(exe)) + ".reg")
+		fmt.Println(reg)
+		data := `Windows Registry Editor Version 5.00
+
+[HKEY_CLASSES_ROOT\Directory\shell\rename-after-movie-title]
+@="Rename after movie title"
+
+[HKEY_CLASSES_ROOT\Directory\shell\rename-after-movie-title\command]
+@="\"` + strings.Replace(exe, `\`, `\\`, -1) + `\" \"%1\""
+
+`
+		ioutil.WriteFile(reg, []byte(data), 0644)
+		return
+	}
 	for _, dir := range os.Args[1:] {
 		// Generate absolute path.
 		dir, err := filepath.Abs(dir)
