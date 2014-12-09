@@ -19,7 +19,8 @@ var imdb_title_rx *regexp.Regexp
 
 func init() {
 	imdb_title_url = "http://www.imdb.com/title/"
-	imdb_title_rx = regexp.MustCompile(imdb_title_url + "(tt[0-9]+)/")
+	imdb_title_rx = regexp.MustCompile(
+		"(?:http://)?(?:www.)?imdb.[^./]+/title/(tt[0-9]+)/?")
 }
 
 type action func(node *html.Node) bool
@@ -103,6 +104,7 @@ type Rename struct {
 }
 
 func main() {
+	fmt.Println(os.Args[0])
 	var genreg bool
 	flag.BoolVar(&genreg, "g", false, "Generate registry file.")
 	var recurse bool
@@ -146,6 +148,7 @@ func main() {
 		// Search NFO files.
 		files, _ := filepath.Glob(filepath.Join(dir, "*.nfo"))
 		for _, filename := range files {
+			fmt.Println("NFO file: " + filename)
 			// Read a IMDB movie ID from the file.
 			file, err := ioutil.ReadFile(filename)
 			if err != nil {
@@ -156,6 +159,7 @@ func main() {
 			if match != nil {
 				id := string(match[1])
 				url := imdb_title_url + id + "/"
+				fmt.Println("URL: " + url)
 
 				// Get HTML.
 				resp, err := http.Get(url)
