@@ -134,22 +134,15 @@ func main() {
 	}
 
 	if (len(todo) == 0) {
-		fmt.Println("Found nothing")
+		info(
+			l15n[lang][rename_after_movie_title],
+			l15n[lang][can_not_find_any_movies])
 	} else {
-		// Localize
-		var title string
-		var headline string
-		switch {
-		case iso_639_1 == "de":
-			title = "Umbenennung gemäß des Film-Titels"
-			headline = "Die folgenden Verzeichnisse umbenennen?"
-		case true:
-			title = "Rename after movie title"
-			headline = "Rename the following directories?"
-		}
 
 		// Rename directories after confirmation
-		if ask(title, headline + "\n\n" + question) {
+		if ask(
+			l15n[lang][rename_after_movie_title],
+			l15n[lang][rename_the_following_directories] + "\n\n" + question) {
 			for _, ren := range todo {
 				fmt.Printf("Renaming: %s -> %s\n", ren.old, ren.new);
 				err := os.Rename(ren.old, ren.new)
