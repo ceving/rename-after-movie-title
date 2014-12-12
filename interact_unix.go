@@ -1,4 +1,4 @@
-// +build unix
+// +build !windows
 
 package main
 
@@ -16,13 +16,13 @@ func init() {
 
 func ask(question string) bool {
 	fmt.Print(question + "\n[Y/n] ")
-	line, err := input.ReadString('\n')
+	line, _ := input.ReadString('\n')
 	return line == "y" || line == "Y"
 }
 
 func info(message string) {
 	fmt.Print(message)
-	line, err := input.ReadString('\n')
+	input.ReadString('\n')
 }
 
 // Local Variables:
