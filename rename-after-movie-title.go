@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 )
 
 var imdb_title_url string
@@ -21,7 +22,14 @@ func init() {
 }
 
 type NameChange struct {
-	old, new string
+	old, neu string
+}
+
+func sanitize(name string) string {
+	for _, invalid := range []string{`\`, `/`, `:`, `*`, `?`, `<`, `>`, `|`, `"`} {
+		name = strings.Replace(name, invalid, "", -1)
+	}
+	return name
 }
 
 type Main func()
@@ -53,36 +61,34 @@ func main() {
 	}
 
 	var question string
-	var todo []NameChange
+	var todo []*NameChange
 
 	// Search directories which could be renamed.
 	search := func(path string) {
 		// Generate absolute path.
 		dir, err := filepath.Abs(path)
 		if err != nil {
-			fmt.Println(err)
+			failure(fmt.Sprintf("%s", err))
 			return
 		}
 		// Search NFO files.
 		files, _ := filepath.Glob(filepath.Join(dir, "*.nfo"))
 		for _, filename := range files {
-			fmt.Println("NFO file: " + filename)
 			// Read a IMDB movie ID from the file.
 			file, err := ioutil.ReadFile(filename)
 			if err != nil {
-				fmt.Println(err)
+				failure(fmt.Sprintf("%s", err))
 				return
 			}
 			match := imdb_title_rx.FindSubmatch(file)
 			if match != nil {
 				id := string(match[1])
 				url := imdb_title_url + id + "/"
-				fmt.Println("URL: " + url)
 
 				// Get HTML.
 				resp, err := http.Get(url)
 				if err != nil {
-					fmt.Println(err)
+					failure(fmt.Sprintf("%s", err))
 					return
 				}
 				defer resp.Body.Close()
@@ -90,7 +96,7 @@ func main() {
 				// Parse HTML.
 				doc, err := html.Parse(resp.Body)
 				if err != nil {
-					fmt.Println(err)
+					failure(fmt.Sprintf("%s", err))
 					return
 				}
 
@@ -105,15 +111,16 @@ func main() {
 						}))
 				find(doc)
 				if title != "" {
+					title = sanitize(title)
+
 					// Rename directory.
-					question += "● " + filepath.Dir(dir) + "\n" +
-						"\u2003\u2003- " + filepath.Base(dir) + "\n" +
-						"\u2003\u2003- " + title + "\n"
+					question += "●\u00A0" + filepath.Dir(dir) + "\n" +
+						"\u2003\u2003-\u00A0" + filepath.Base(dir) + "\n" +
+						"\u2003\u2003-\u00A0" + title + "\n"
 
 					// Store in the todo list.
 					ren := NameChange{dir, filepath.Join(filepath.Dir(dir), title)}
-					fmt.Printf("Adding: %#v\n", ren)
-					todo = append(todo, ren)
+					todo = append(todo, &ren)
 
 					// We are done.
 					return
@@ -144,10 +151,9 @@ func main() {
 		// Rename directories after confirmation
 		if ask(l15n[lang][rename_the_following_directories] + "\n\n" + question) {
 			for _, ren := range todo {
-				fmt.Printf("Renaming: %s -> %s\n", ren.old, ren.new);
-				err := os.Rename(ren.old, ren.new)
+				err := os.Rename(ren.old, ren.neu)
 				if err != nil {
-					fmt.Println(err)
+					failure(fmt.Sprintf("%s", err))
 				}
 			}
 		}

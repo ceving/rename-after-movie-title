@@ -12,6 +12,7 @@ var windows struct {
 	MessageBoxW *syscall.LazyProc
 	MB_ICONQUESTION,
 	MB_ICONINFORMATION,
+	MB_ICONERROR,
 	MB_YESNO,
 	MB_OK,
 	IDYES uint
@@ -22,6 +23,7 @@ func init() {
 	windows.MessageBoxW = windows.user32.NewProc("MessageBoxW")
 	windows.MB_ICONINFORMATION = 0x40
 	windows.MB_ICONQUESTION    = 0x20
+	windows.MB_ICONERROR       = 0x10
 	windows.MB_YESNO = 0x4
 	windows.MB_OK    = 0x0
 	windows.IDYES = 6
@@ -40,4 +42,11 @@ func info(message string) {
 		uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(message))),
 		uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(l15n[lang][application_title]))),
 		uintptr(windows.MB_ICONINFORMATION | windows.MB_OK))
+}
+
+func failure(message string) {
+	windows.MessageBoxW.Call(0,
+		uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(message))),
+		uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(l15n[lang][application_title]))),
+		uintptr(windows.MB_ICONERROR | windows.MB_OK))
 }
