@@ -103,8 +103,8 @@ func main() {
 				if title != "" {
 					// Rename directory.
 					question += "● " + filepath.Dir(dir) + "\n" +
-						"\u2003- " + filepath.Base(dir) + "\n" +
-						"\u2003- " + title + "\n"
+						"\u2003\u2003- " + filepath.Base(dir) + "\n" +
+						"\u2003\u2003- " + title + "\n"
 
 					// Store in the todo list.
 					ren := NameChange{dir, filepath.Join(filepath.Dir(dir), title)}
@@ -149,7 +149,3 @@ func main() {
 		}
 	}
 }
-
-// Local Variables:
-// compile-command: "go build -ldflags -H=windowsgui"
-// End:

@@ -17,7 +17,8 @@ func init() {
 func ask(question string) bool {
 	fmt.Print(question + "\n[Y/n] ")
 	line, _ := input.ReadString('\n')
-	return line == "y" || line == "Y"
+	char := line[0]
+	return char == 'y' || char == 'Y' || char == '\n'
 }
 
 func info(message string) {
