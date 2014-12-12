@@ -9,9 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strings"
-	"syscall"
-	"unsafe"
 )
 
 var imdb_title_url string
@@ -23,119 +20,40 @@ func init() {
 		"(?:http://)?(?:www.)?imdb.[^./]+/title/(tt[0-9]+)/?")
 }
 
-type action func(node *html.Node) bool
-type predicate func(node *html.Node) bool
-
-func element(name string) predicate {
-	return func(node *html.Node) bool {
-		return node.Type == html.ElementNode && node.Data == name
-	}
-}
-
-func attribute(name, value string) predicate {
-	return func(node *html.Node) bool {
-		for _, attr := range node.Attr {
-			if attr.Key == name && attr.Val == value {
-				return true
-			}
-		}
-		return false
-	}
-}
-
-func text() predicate {
-	return func(node *html.Node) bool {
-		return node.Type == html.TextNode
-	}
-}
-
-func and(a, b predicate) predicate {
-	return func(node *html.Node) bool {
-		return a(node) && b(node)
-	}
-}
-
-func not(a predicate) predicate {
-	return func(node *html.Node) bool {
-		if a(node) {
-			return false
-		} else {
-			return true
-		}
-	}
-}
-
-func matcher(matches predicate, continuation action) action {
-	return func(node *html.Node) bool {
-		if matches(node) {
-			return continuation(node)
-		}
-		return true
-	}
-}
-
-func walker(continuation action) action {
-	var walk action
-	walk = func(node *html.Node) bool {
-		if continuation(node) {
-			cont := true
-			for child := node.FirstChild; child != nil && cont; child = child.NextSibling {
-				cont = walk(child)
-			}
-			return true
-		} else {
-			return false
-		}
-	}
-	return walk
-}
-
-func attrval(node *html.Node, name string) string {
-	for _, attr := range node.Attr {
-		if attr.Key == name {
-			return attr.Val
-		}
-	}
-	return ""
-}
-
-type Rename struct {
+type NameChange struct {
 	old, new string
 }
 
+type Main func()
+type Mains []Main
+
+func (ms *Mains) add (m Main) {
+	*ms = append(*ms, m)
+}
+
+func (ms *Mains) run () {
+	for _, m := range *ms {
+		m()
+	}
+}
+
+var mains Mains
+var recurse bool
+
 func main() {
-	fmt.Println(os.Args[0])
-	var genreg bool
-	flag.BoolVar(&genreg, "g", false, "Generate registry file.")
 	var recurse bool
 	flag.BoolVar(&recurse, "r", true, "Scan directories recursively.")
 	flag.Parse()
-	if genreg {
-		exe := os.Args[0]
-		reg := filepath.Join(
-			filepath.Dir(exe),
-			strings.TrimSuffix(
-				filepath.Base(exe),
-				filepath.Ext(exe)) + ".reg")
-		fmt.Println(reg)
-		recopt := ""
-		if !recurse {
-			recopt = " -r=false"
-		}
-		data := `Windows Registry Editor Version 5.00
+	mains.run()
 
-[HKEY_CLASSES_ROOT\Directory\shell\rename-after-movie-title]
-@="Rename after movie title"
+	args := flag.Args()
 
-[HKEY_CLASSES_ROOT\Directory\shell\rename-after-movie-title\command]
-@="\"` + strings.Replace(exe, `\`, `\\`, -1) + recopt + `\" \"%1\""
-
-`
-		ioutil.WriteFile(reg, []byte(data), 0644)
-		return
+	if len(args) == 0 {
+		args = append(args, ".")
 	}
-	var question string = ""
-	var todo = []Rename{}
+
+	var question string
+	var todo []NameChange
 
 	// Search directories which could be renamed.
 	search := func(path string) {
@@ -188,10 +106,12 @@ func main() {
 				find(doc)
 				if title != "" {
 					// Rename directory.
-					question += filepath.Base(dir) + " → " + title + "\n"
+					question += "● " + filepath.Dir(dir) + "\n" +
+						"\u2003\u2003- " + filepath.Base(dir) + "\n" +
+						"\u2003\u2003- " + title + "\n"
 
 					// Store in the todo list.
-					ren := Rename{dir, filepath.Join(filepath.Dir(dir), title)}
+					ren := NameChange{dir, filepath.Join(filepath.Dir(dir), title)}
 					fmt.Printf("Adding: %#v\n", ren)
 					todo = append(todo, ren)
 
@@ -203,7 +123,7 @@ func main() {
 	}
 
 	// Process directory
-	for _, dir := range os.Args[1:] {
+	for _, dir := range args {
 		if recurse {
 			filepath.Walk(dir,
 				func(path string, info os.FileInfo, err error) error {
@@ -217,46 +137,19 @@ func main() {
 		}
 	}
 
-	// Language codes are documented here:
-	// http://msdn.microsoft.com/en-us/library/dd318693%28v=vs.85%29.aspx
-	var LANG_GERMAN uint16 = 0x7
+	if (len(todo) == 0) {
+		info(l15n[lang][can_not_find_any_movies])
+	} else {
 
-	// Get language and set the headline.
-	var kernel32 = syscall.NewLazyDLL("kernel32.dll")
-	var GetUserDefaultUILanguage = kernel32.NewProc("GetUserDefaultUILanguage")
-	langid, _, _ := GetUserDefaultUILanguage.Call()
-	lang := uint16(langid) & 0xF
-	var headline string
-	switch {
-	case lang == LANG_GERMAN:
-		headline = "Die folgenden Verzeichnisse umbenennen?"
-	case true:
-		headline = "Rename the following directories?"
-	}
-
-	// Ask if the directories found should be renamed.
-	var user32 = syscall.NewLazyDLL("user32.dll")
-	var MessageBoxW = user32.NewProc("MessageBoxW")
-	var MB_ICONQUESTION = 0x00000020
-	var MB_YESNO = 0x00000004
-	var IDYES uint = 6
-	ret, _, _ := MessageBoxW.Call(0,
-		uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(question))),
-		uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(headline))),
-		uintptr(MB_ICONQUESTION | MB_YESNO));
-	if uint(ret) == IDYES {
-		// Rename them
-		for _, ren := range todo {
-			fmt.Printf("Renaming: %s -> %s\n", ren.old, ren.new);
-			err := os.Rename(ren.old, ren.new)
-			if err != nil {
-				fmt.Println(err)
+		// Rename directories after confirmation
+		if ask(l15n[lang][rename_the_following_directories] + "\n\n" + question) {
+			for _, ren := range todo {
+				fmt.Printf("Renaming: %s -> %s\n", ren.old, ren.new);
+				err := os.Rename(ren.old, ren.new)
+				if err != nil {
+					fmt.Println(err)
+				}
 			}
 		}
 	}
 }
-
-// Local Variables:
-// compile-command: "go build -ldflags -H=windowsgui \
-//   rename-after-movie-title.go"
-// End:
