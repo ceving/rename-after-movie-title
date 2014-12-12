@@ -7,6 +7,8 @@ const (
 	rename_after_movie_title TextId = iota
 	rename_the_following_directories
 	can_not_find_any_movies
+	// Aliases
+	application_title = rename_after_movie_title
 )
 
 const (

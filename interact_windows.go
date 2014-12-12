@@ -1,3 +1,5 @@
+// +build windows
+
 package main
 
 import (
@@ -25,18 +27,18 @@ func init() {
 	windows.IDYES = 6
 }
 
-func ask(title, question string) bool {
+func ask(question string) bool {
 	ret, _, _ := windows.MessageBoxW.Call(0,
 		uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(question))),
-		uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(title))),
+		uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(l15n[lang][application_title]))),
 		uintptr(windows.MB_ICONQUESTION | windows.MB_YESNO))
 	return uint(ret) == windows.IDYES
 }
 
-func info(title, message string) {
+func info(message string) {
 	windows.MessageBoxW.Call(0,
 		uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(message))),
-		uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(title))),
+		uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(l15n[lang][application_title]))),
 		uintptr(windows.MB_ICONINFORMATION | windows.MB_OK))
 }
 

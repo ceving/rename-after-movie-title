@@ -134,15 +134,11 @@ func main() {
 	}
 
 	if (len(todo) == 0) {
-		info(
-			l15n[lang][rename_after_movie_title],
-			l15n[lang][can_not_find_any_movies])
+		info(l15n[lang][can_not_find_any_movies])
 	} else {
 
 		// Rename directories after confirmation
-		if ask(
-			l15n[lang][rename_after_movie_title],
-			l15n[lang][rename_the_following_directories] + "\n\n" + question) {
+		if ask(l15n[lang][rename_the_following_directories] + "\n\n" + question) {
 			for _, ren := range todo {
 				fmt.Printf("Renaming: %s -> %s\n", ren.old, ren.new);
 				err := os.Rename(ren.old, ren.new)
