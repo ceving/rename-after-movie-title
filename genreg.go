@@ -41,7 +41,3 @@ func init() {
 			}
 		})
 }
-
-// Local Variables:
-// compile-command: "go build -ldflags -H=windowsgui"
-// End:

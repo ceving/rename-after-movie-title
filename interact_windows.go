@@ -41,7 +41,3 @@ func info(message string) {
 		uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(l15n[lang][application_title]))),
 		uintptr(windows.MB_ICONINFORMATION | windows.MB_OK))
 }
-
-// Local Variables:
-// compile-command: "go build -ldflags -H=windowsgui"
-// End:

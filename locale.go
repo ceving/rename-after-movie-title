@@ -30,7 +30,3 @@ var l15n = map[LangId]map[TextId]string {
 		can_not_find_any_movies: "Kann keine Filme finden.",
 	},
 }
-
-// Local Variables:
-// compile-command: "go build -ldflags -H=windowsgui"
-// End:

@@ -24,7 +24,3 @@ func info(message string) {
 	fmt.Print(message)
 	input.ReadString('\n')
 }
-
-// Local Variables:
-// compile-command: "go build -ldflags -H=windowsgui"
-// End:

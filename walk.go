@@ -79,7 +79,3 @@ func attrval(node *html.Node, name string) string {
 	}
 	return ""
 }
-
-// Local Variables:
-// compile-command: "go build -ldflags -H=windowsgui"
-// End:
