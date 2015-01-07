@@ -1,0 +1,14 @@
+Your request for an API key has been approved. You can start using this key immediately.
+
+API Key: 965a325501646c70a6545588d95e23d4
+
+We recently launched our TV API and would love some feedback if you have a chance to check it out.
+
+Useful Links
+
+    Documentation: https://www.themoviedb.org/documentation/api
+    Support forum: https://www.themoviedb.org/talk
+    Wrappers & libraries: https://www.themoviedb.org/documentation/api/wrappers-libraries
+    New feature and deprecation feed: https://www.themoviedb.org/developers
+
+If you have any questions, feel free to create a new discussion in our support forum.
